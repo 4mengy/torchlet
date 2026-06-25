@@ -10,7 +10,6 @@ class RmsNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x: Tensor):
+        assert x.dim() == 2
         norm = x * torch.rsqrt(torch.pow(x, 2).mean(-1, keepdim=True) + self.eps)
-        return (
-            norm * self.weight
-        )  # Elementwise scale along the last dimension
+        return norm * self.weight  # Elementwise scale along the last dimension

@@ -1,6 +1,6 @@
-import torch
 from torch import Tensor, nn
 
+from ..forward_params import ForwardParams
 from .ffn_swiglu import FFNSwiGLU
 from .gqa import GroupedQueryAttention
 from .rms_norm import RmsNorm
@@ -32,7 +32,7 @@ class TransformerBlock(nn.Module):
         self.input_layernorm = RmsNorm(hidden_size, eps=rms_norm_eps)
         self.post_attention_layernorm = RmsNorm(hidden_size, eps=rms_norm_eps)
 
-    def forward(self, x: Tensor) -> Tensor:
-        x = x + self.self_attn(self.input_layernorm(x))
+    def forward(self, x: Tensor, forward_params: ForwardParams) -> Tensor:
+        x = x + self.self_attn(self.input_layernorm(x), forward_params)
         x = x + self.mlp(self.post_attention_layernorm(x))
         return x

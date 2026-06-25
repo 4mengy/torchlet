@@ -1,4 +1,3 @@
-import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
@@ -11,5 +10,6 @@ class FFNSwiGLU(nn.Module):
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
+        assert x.dim() == 2
         # Elementwise multiplication acts as the gate
         return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))

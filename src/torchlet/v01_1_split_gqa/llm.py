@@ -1,4 +1,4 @@
-import json, logging
+import json
 from pathlib import Path
 
 import torch
@@ -11,7 +11,9 @@ from transformers import AutoTokenizer
 from torchlet.logger import logger
 from torchlet.utils import get_weights_info, get_backend_info
 
+from .forward_params import ForwardParams
 from .model.qwen2_5 import Qwen2ForCausalLM
+from .request import RequestBatch
 
 
 class LLM:
@@ -30,6 +32,7 @@ class LLM:
         load_result = self.model.load_state_dict(weights, strict=False)
         del weights
         self.model.to(self.device)
+        self.model.eval()
         logger.info("missing_keys: %s", load_result.missing_keys)
         logger.info("unexpected_keys: %s", load_result.unexpected_keys)
 
@@ -44,47 +47,42 @@ class LLM:
             weights.update(load_file(str(f)))
         return weights
 
-    def generate(self, input: str, max_new_tokens: int = 128) -> str:
-        self.model.eval()
+    def generate(self, inputs: list[str], max_new_tokens: int = 128) -> list[str]:
         stop_ids = {
             self.tokenizer.eos_token_id,
             self.tokenizer.convert_tokens_to_ids("<|im_end|>"),
         }
         stop_ids = {tok_id for tok_id in stop_ids if tok_id is not None}
 
-        messages = [{"role": "user", "content": input}]
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-        input_ids = self.tokenizer.encode(text, return_tensors="pt").to(
-            self.device
-        )  # [batch, num_tokens]
+        messages = [[{"role": "user", "content": input}] for input in inputs]
+        text = [
+            self.tokenizer.apply_chat_template(
+                msg,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for msg in messages
+        ]
+        encoded = self.tokenizer(text, padding=False)
 
-        out_tok_ids = []
+        req_batch = RequestBatch(text, encoded["input_ids"], stop_ids)
+
         with torch.no_grad():
             for _ in range(max_new_tokens):
-                logits = self.model.forward(
-                    input_ids, last_token_only=True
-                )  # [batch, vocab_size]
-                last_tok_id = self.sample(logits)  # [1]
-                if last_tok_id.item() in stop_ids:
+                flat_input_ids, req_indptr_cpu = req_batch.gen_llm_req(self.device)
+                if flat_input_ids.numel() == 0:
                     break
 
-                out_tok_ids.append(last_tok_id)
-                input_ids = torch.cat(
-                    [input_ids, last_tok_id.view(1, 1)],
-                    dim=-1,
-                )
+                forward_params = ForwardParams(req_indptr_cpu=req_indptr_cpu)
 
-        if not out_tok_ids:
-            return ""
+                logits = self.model.forward(
+                    flat_input_ids, forward_params, last_token_only=True
+                )  # [batch, vocab_size]
+                gen_tok_id = self.sample(logits)  # [batch]
+                req_batch.process_output(gen_tok_id)
 
-        out_tok_ids = torch.cat(out_tok_ids, dim=0)  # [new_tokens]
-        # move to CPU and convert to python list for tokenizer.decode
-        out_tok_ids = out_tok_ids.cpu().tolist()
-        return self.tokenizer.decode(out_tok_ids, skip_special_tokens=True)
+        out_tok_ids = [req.output_tokens for req in req_batch.requests]
+        return self.tokenizer.batch_decode(out_tok_ids, skip_special_tokens=True)
 
     def sample(self, logits: Tensor):
         return logits.argmax(dim=-1)
@@ -93,4 +91,4 @@ class LLM:
 if __name__ == "__main__":
     model_id = "Qwen/Qwen2.5-0.5B-Instruct"
     llm = LLM(model_id)
-    print(llm.generate("hello, do a simple introduction"))
+    print(llm.generate(["hello, do a simple introduction", "what's the nearest star"]))
