@@ -21,6 +21,23 @@ The current implementation uses a Qwen2.5-style decoder-only Transformer as the 
 
 See [ROADMAP.md](ROADMAP.md) for the full planned version path.
 
+## Documentation Site
+
+The repository includes a static documentation site that explains what each
+version introduces, why the change exists, and which files are useful to
+compare. It also includes a browser page for side-by-side code comparison across
+implemented versions.
+
+Build it locally with:
+
+```bash
+python3 tools/build_docs.py
+```
+
+Then open `docs/_site/index.html`.
+
+GitHub Pages deployment is configured in `.github/workflows/docs.yml`.
+
 ## Installation
 
 Python 3.12+ is recommended.

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "v00_full_recompute",
+    "title": "Full Recompute",
+    "theme": "Single-request Qwen2.5 baseline",
+    "status": "implemented"
+  },
+  {
+    "id": "v01_0_ragged_batch",
+    "title": "Ragged Batch",
+    "theme": "Batch variable-length requests with req_indptr",
+    "status": "implemented"
+  },
+  {
+    "id": "v01_1_split_gqa",
+    "title": "Split GQA",
+    "theme": "Make attention phases readable before adding cache",
+    "status": "implemented"
+  },
+  {
+    "id": "v02_kv_cache",
+    "title": "KV Cache",
+    "theme": "Separate prefill and decode to stop recomputing history",
+    "status": "implemented"
+  },
+  {
+    "id": "v03_request_states",
+    "title": "Request States",
+    "theme": "Track waiting, running, and finished requests",
+    "status": "implemented"
+  },
+  {
+    "id": "v04_continuous_batching",
+    "title": "Continuous Batching",
+    "theme": "Admit and retire requests while decoding continues",
+    "status": "implemented"
+  },
+  {
+    "id": "v05_decode_slots",
+    "title": "Decode Slots",
+    "theme": "Give decode requests stable slot identities",
+    "status": "implemented"
+  },
+  {
+    "id": "v06_static_buffers",
+    "title": "Static Buffers",
+    "theme": "Prepare fixed decode inputs for graph capture",
+    "status": "implemented"
+  },
+  {
+    "id": "v07_cuda_graph",
+    "title": "CUDA Graph",
+    "theme": "Capture and replay the static decode path",
+    "status": "implemented"
+  },
+  {
+    "id": "v08_paged_gqa_py",
+    "title": "Paged GQA in PyTorch",
+    "theme": "Use a block pool and block table for KV cache",
+    "status": "implemented"
+  },
+  {
+    "id": "v09_triton_basics",
+    "title": "Triton Basics",
+    "theme": "Introduce a small custom kernel before paged attention",
+    "status": "planned"
+  },
+  {
+    "id": "v10_triton_paged_gqa",
+    "title": "Triton Paged GQA",
+    "theme": "Move paged attention from Python loops to Triton",
+    "status": "planned"
+  },
+  {
+    "id": "v11_cuda_graph_triton_paged",
+    "title": "CUDA Graph + Triton Paged",
+    "theme": "Replay the fixed Triton paged decode path",
+    "status": "planned"
+  }
+]
