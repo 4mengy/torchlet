@@ -330,28 +330,26 @@ def build_compare(out_dir: Path, versions: list[dict[str, str]]) -> None:
     compare_dir.mkdir(parents=True, exist_ok=True)
     body = """
 <h1>Compare Code</h1>
-<p class="lede">Choose two implemented versions and one file path. The viewer keeps the file path aligned so adjacent design changes are easy to inspect.</p>
+<p class="lede">Choose two implemented versions and one file path. The viewer renders a split diff so adjacent design changes are easy to inspect.</p>
 <div class="compare-toolbar">
   <label>Left version<select id="leftVersion"></select></label>
   <label>Right version<select id="rightVersion"></select></label>
   <label>File<select id="filePath"></select></label>
 </div>
-<div class="code-grid">
-  <section class="code-panel">
-    <div class="code-panel-header">
+<section class="diff-panel">
+  <div class="diff-panel-header">
+    <div>
       <h2 id="leftTitle"></h2>
       <span id="leftMeta"></span>
     </div>
-    <pre id="leftCode"></pre>
-  </section>
-  <section class="code-panel">
-    <div class="code-panel-header">
+    <div class="diff-summary" id="diffSummary"></div>
+    <div>
       <h2 id="rightTitle"></h2>
       <span id="rightMeta"></span>
     </div>
-    <pre id="rightCode"></pre>
-  </section>
-</div>
+  </div>
+  <div class="diff-scroll" id="diffView"></div>
+</section>
 """
     (compare_dir / "index.html").write_text(
         page_shell(

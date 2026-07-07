@@ -9,8 +9,8 @@
   const rightTitle = document.querySelector("#rightTitle");
   const leftMeta = document.querySelector("#leftMeta");
   const rightMeta = document.querySelector("#rightMeta");
-  const leftCode = document.querySelector("#leftCode");
-  const rightCode = document.querySelector("#rightCode");
+  const diffSummary = document.querySelector("#diffSummary");
+  const diffView = document.querySelector("#diffView");
 
   function hasVersion(id) {
     return payload.versions.some((version) => version.id === id);
@@ -58,21 +58,175 @@
       .replaceAll(">", "&gt;");
   }
 
-  function renderCode(target, code) {
+  function splitLines(code) {
     if (code === undefined) {
-      target.innerHTML =
-        '<div class="empty-code">This file does not exist in this version.</div>';
+      return [];
+    }
+    if (code === "") {
+      return [""];
+    }
+    return code.endsWith("\n") ? code.slice(0, -1).split("\n") : code.split("\n");
+  }
+
+  function buildRawDiff(leftLines, rightLines) {
+    const leftLength = leftLines.length;
+    const rightLength = rightLines.length;
+    const dp = Array.from({ length: leftLength + 1 }, () =>
+      Array(rightLength + 1).fill(0)
+    );
+
+    for (let i = leftLength - 1; i >= 0; i -= 1) {
+      for (let j = rightLength - 1; j >= 0; j -= 1) {
+        if (leftLines[i] === rightLines[j]) {
+          dp[i][j] = dp[i + 1][j + 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+    }
+
+    const ops = [];
+    let i = 0;
+    let j = 0;
+    while (i < leftLength && j < rightLength) {
+      if (leftLines[i] === rightLines[j]) {
+        ops.push({
+          kind: "equal",
+          leftNo: i + 1,
+          rightNo: j + 1,
+          leftText: leftLines[i],
+          rightText: rightLines[j],
+        });
+        i += 1;
+        j += 1;
+      } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+        ops.push({
+          kind: "delete",
+          leftNo: i + 1,
+          leftText: leftLines[i],
+        });
+        i += 1;
+      } else {
+        ops.push({
+          kind: "add",
+          rightNo: j + 1,
+          rightText: rightLines[j],
+        });
+        j += 1;
+      }
+    }
+
+    while (i < leftLength) {
+      ops.push({
+        kind: "delete",
+        leftNo: i + 1,
+        leftText: leftLines[i],
+      });
+      i += 1;
+    }
+
+    while (j < rightLength) {
+      ops.push({
+        kind: "add",
+        rightNo: j + 1,
+        rightText: rightLines[j],
+      });
+      j += 1;
+    }
+
+    return ops;
+  }
+
+  function buildRows(leftLines, rightLines) {
+    const ops = buildRawDiff(leftLines, rightLines);
+    const rows = [];
+    let added = 0;
+    let deleted = 0;
+    let index = 0;
+
+    while (index < ops.length) {
+      const op = ops[index];
+      if (op.kind === "equal") {
+        rows.push(op);
+        index += 1;
+        continue;
+      }
+
+      const deletes = [];
+      const adds = [];
+      while (index < ops.length && ops[index].kind !== "equal") {
+        if (ops[index].kind === "delete") {
+          deletes.push(ops[index]);
+        } else {
+          adds.push(ops[index]);
+        }
+        index += 1;
+      }
+
+      deleted += deletes.length;
+      added += adds.length;
+      const maxRows = Math.max(deletes.length, adds.length);
+      for (let offset = 0; offset < maxRows; offset += 1) {
+        const left = deletes[offset];
+        const right = adds[offset];
+        if (left && right) {
+          rows.push({
+            kind: "change",
+            leftNo: left.leftNo,
+            rightNo: right.rightNo,
+            leftText: left.leftText,
+            rightText: right.rightText,
+          });
+        } else if (left) {
+          rows.push(left);
+        } else if (right) {
+          rows.push(right);
+        }
+      }
+    }
+
+    return { rows, added, deleted };
+  }
+
+  function renderLineNo(value) {
+    return value === undefined ? "" : value;
+  }
+
+  function renderDiff(leftCode, rightCode) {
+    const leftMissing = leftCode === undefined;
+    const rightMissing = rightCode === undefined;
+    if (leftMissing && rightMissing) {
+      diffSummary.textContent = "file missing";
+      diffView.innerHTML = '<div class="empty-code">This file does not exist.</div>';
       return;
     }
 
-    const lines = code.endsWith("\n") ? code.slice(0, -1).split("\n") : code.split("\n");
-    const rows = lines
-      .map(
-        (line, index) =>
-          `<tr><td class="line-no">${index + 1}</td><td>${escapeHtml(line)}</td></tr>`
-      )
+    const leftLines = splitLines(leftCode);
+    const rightLines = splitLines(rightCode);
+    const { rows, added, deleted } = buildRows(leftLines, rightLines);
+
+    diffSummary.innerHTML =
+      `<span class="diff-count add">+${added}</span>` +
+      `<span class="diff-count delete">-${deleted}</span>`;
+
+    const renderedRows = rows
+      .map((row) => {
+        const leftMarker = row.kind === "add" ? "" : row.kind === "equal" ? "" : "-";
+        const rightMarker = row.kind === "delete" ? "" : row.kind === "equal" ? "" : "+";
+        const leftText = row.kind === "add" ? "" : row.leftText;
+        const rightText = row.kind === "delete" ? "" : row.rightText;
+        return `<tr class="diff-row diff-${row.kind}">
+          <td class="diff-line-no old">${renderLineNo(row.leftNo)}</td>
+          <td class="diff-marker old">${leftMarker}</td>
+          <td class="diff-code old">${escapeHtml(leftText || "")}</td>
+          <td class="diff-line-no new">${renderLineNo(row.rightNo)}</td>
+          <td class="diff-marker new">${rightMarker}</td>
+          <td class="diff-code new">${escapeHtml(rightText || "")}</td>
+        </tr>`;
+      })
       .join("");
-    target.innerHTML = `<table class="code-table"><tbody>${rows}</tbody></table>`;
+
+    diffView.innerHTML = `<table class="diff-table"><tbody>${renderedRows}</tbody></table>`;
   }
 
   function render() {
@@ -82,11 +236,12 @@
 
     leftTitle.textContent = left;
     rightTitle.textContent = right;
-    leftMeta.textContent = path;
-    rightMeta.textContent = path;
+    const leftCode = payload.code[left] && payload.code[left][path];
+    const rightCode = payload.code[right] && payload.code[right][path];
+    leftMeta.textContent = leftCode === undefined ? `${path} missing` : path;
+    rightMeta.textContent = rightCode === undefined ? `${path} missing` : path;
 
-    renderCode(leftCode, payload.code[left] && payload.code[left][path]);
-    renderCode(rightCode, payload.code[right] && payload.code[right][path]);
+    renderDiff(leftCode, rightCode);
 
     const nextParams = new URLSearchParams({ left, right, file: path });
     window.history.replaceState(null, "", `?${nextParams.toString()}`);

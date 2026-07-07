@@ -33,8 +33,9 @@ The build script scans `src/torchlet/v*/**/*.py`, stores the source in
 `docs/_site/data/code.js`, and creates a static compare page at
 `docs/_site/compare/index.html`.
 
-The page is intentionally simple: it aligns one file path across two selected
-versions. If a file exists in only one version, the missing side says so.
+The page renders a split diff for one file path across two selected versions. If
+a file exists in only one version, the missing side is shown as pure additions or
+deletions.
 
 ## Build Locally
 
