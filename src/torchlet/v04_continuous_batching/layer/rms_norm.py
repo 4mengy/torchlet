@@ -5,7 +5,6 @@ from torch import Tensor, nn
 class RmsNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
-        self.dim = dim
         self.eps = eps  # Avoid a zero denominator
         self.weight = nn.Parameter(torch.ones(dim))
 

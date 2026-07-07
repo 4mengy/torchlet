@@ -29,12 +29,11 @@ class GroupedQueryAttention(nn.Module):
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads
         self.head_dim = d_out // num_heads  # Dimension of each query head
-        self.kv_head_dim = (
-            self.head_dim * num_kv_heads
-        )  # Queries use num_heads; keys and values use num_kv_heads
+        # Queries use num_heads; keys and values use num_kv_heads.
+        kv_head_dim = self.head_dim * num_kv_heads
         self.q_proj = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.k_proj = nn.Linear(d_in, self.kv_head_dim, bias=qkv_bias)
-        self.v_proj = nn.Linear(d_in, self.kv_head_dim, bias=qkv_bias)
+        self.k_proj = nn.Linear(d_in, kv_head_dim, bias=qkv_bias)
+        self.v_proj = nn.Linear(d_in, kv_head_dim, bias=qkv_bias)
         self.o_proj = nn.Linear(
             d_out, d_out, bias=False
         )  # Linear projection that combines head outputs
@@ -43,7 +42,7 @@ class GroupedQueryAttention(nn.Module):
         )
 
     def forward(self, x: Tensor, forward_params: ForwardParams) -> Tensor:
-        total_tokens_num, d_in = x.shape
+        total_tokens_num = x.shape[0]
         queries = self.q_proj(x)  # Tensor shape: (total_tokens_num, d_out)
         keys = self.k_proj(x)  # Tensor shape: (total_tokens_num, kv_head_dim)
         values = self.v_proj(x)

@@ -24,7 +24,6 @@ class KVCache:
             device=device,
         )
         self.max_seq_len = max_seq_len
-        self.max_decode_slots = max_decode_slots
 
         self.cache_positions = torch.arange(max_seq_len, device=device)
 

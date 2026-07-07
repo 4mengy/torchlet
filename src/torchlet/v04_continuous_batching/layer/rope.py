@@ -22,10 +22,6 @@ class RotaryPositionEmbedding(nn.Module):
         super().__init__()
         assert head_dim % 2 == 0, "head_dim must be even for split-half rotation"
 
-        self.head_dim = head_dim
-        self.context_length = context_length
-        self.theta = theta
-
         # Precompute frequencies: θᵢ = theta^{-2i/d}, i = 0, 1, ..., d/2 - 1
         # Shape: (head_dim // 2,)
         i = torch.arange(0, head_dim, 2, dtype=torch.float32)

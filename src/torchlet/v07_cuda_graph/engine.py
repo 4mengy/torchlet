@@ -172,10 +172,6 @@ class Engine:
     def sample(self, logits: Tensor):
         return logits.argmax(dim=-1)
 
-    def drain_finished_reqs(self):
-        finished = self.scheduler.drain_finished_reqs()
-        return finished
-
     def complete_reqs(self, requests: list[Request]):
         normal_reqs = [req for req in requests if req.error is None]
         if normal_reqs:
@@ -195,7 +191,7 @@ class Engine:
             while True:
                 if not await self.step():
                     return
-                finished = self.drain_finished_reqs()
+                finished = self.scheduler.drain_finished_reqs()
                 if finished:
                     self.complete_reqs(finished)
                 await asyncio.sleep(0)
