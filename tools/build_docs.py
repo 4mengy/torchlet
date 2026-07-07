@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import re
@@ -122,6 +123,18 @@ def read_versions() -> list[dict[str, str]]:
         return json.load(file)
 
 
+def build_asset_version(code_payload: dict[str, object]) -> str:
+    digest = hashlib.sha256()
+    digest.update((ASSETS / "site.css").read_bytes())
+    digest.update((ASSETS / "compare.js").read_bytes())
+    digest.update(json.dumps(code_payload, sort_keys=True).encode())
+    return digest.hexdigest()[:12]
+
+
+def versioned(path: str, asset_version: str) -> str:
+    return f"{path}?v={asset_version}" if asset_version else path
+
+
 def compare_href(prefix: str, left: str, right: str, file_path: str) -> str:
     return (
         f"{prefix}/compare/?left={quote(left)}&right={quote(right)}"
@@ -186,6 +199,7 @@ def page_shell(
     extra_class: str = "",
     extra_head: str = "",
     extra_body: str = "",
+    asset_version: str = "",
 ) -> str:
     nav_items = []
     for version in versions:
@@ -210,7 +224,7 @@ def page_shell(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)} - Torchlet Docs</title>
-  <link rel="stylesheet" href="{root_prefix}/assets/site.css">
+  <link rel="stylesheet" href="{versioned(f'{root_prefix}/assets/site.css', asset_version)}">
   {extra_head}
 </head>
 <body>
@@ -243,7 +257,9 @@ def page_shell(
 """
 
 
-def build_index(out_dir: Path, versions: list[dict[str, str]]) -> None:
+def build_index(
+    out_dir: Path, versions: list[dict[str, str]], asset_version: str
+) -> None:
     content = render_markdown((CONTENT / "index.md").read_text())
     cards = []
     for version in versions:
@@ -270,11 +286,19 @@ def build_index(out_dir: Path, versions: list[dict[str, str]]) -> None:
         + "</section>"
     )
     (out_dir / "index.html").write_text(
-        page_shell(title="Guide", body=body, versions=versions, current="index")
+        page_shell(
+            title="Guide",
+            body=body,
+            versions=versions,
+            current="index",
+            asset_version=asset_version,
+        )
     )
 
 
-def build_version_pages(out_dir: Path, versions: list[dict[str, str]]) -> None:
+def build_version_pages(
+    out_dir: Path, versions: list[dict[str, str]], asset_version: str
+) -> None:
     for index, version in enumerate(versions):
         source = VERSION_CONTENT / f"{version['id']}.md"
         body = render_markdown(source.read_text())
@@ -296,6 +320,7 @@ def build_version_pages(out_dir: Path, versions: list[dict[str, str]]) -> None:
                 body=body,
                 versions=versions,
                 current=version["id"],
+                asset_version=asset_version,
             )
         )
 
@@ -325,7 +350,9 @@ def collect_code() -> dict[str, object]:
     }
 
 
-def build_compare(out_dir: Path, versions: list[dict[str, str]]) -> None:
+def build_compare(
+    out_dir: Path, versions: list[dict[str, str]], asset_version: str
+) -> None:
     compare_dir = out_dir / "compare"
     compare_dir.mkdir(parents=True, exist_ok=True)
     body = """
@@ -359,9 +386,10 @@ def build_compare(out_dir: Path, versions: list[dict[str, str]]) -> None:
             current="compare",
             extra_class="compare-page",
             extra_body=(
-                '<script src="../data/code.js"></script>'
-                '<script src="../assets/compare.js"></script>'
+                f'<script src="{versioned("../data/code.js", asset_version)}"></script>'
+                f'<script src="{versioned("../assets/compare.js", asset_version)}"></script>'
             ),
+            asset_version=asset_version,
         )
     )
 
@@ -378,14 +406,15 @@ def build(out_dir: Path) -> None:
     data_dir = out_dir / "data"
     data_dir.mkdir()
     code_payload = collect_code()
+    asset_version = build_asset_version(code_payload)
     (data_dir / "code.json").write_text(json.dumps(code_payload))
     (data_dir / "code.js").write_text(
         "window.TORCHLET_CODE = " + json.dumps(code_payload) + ";\n"
     )
 
-    build_index(out_dir, versions)
-    build_version_pages(out_dir, versions)
-    build_compare(out_dir, versions)
+    build_index(out_dir, versions, asset_version)
+    build_version_pages(out_dir, versions, asset_version)
+    build_compare(out_dir, versions, asset_version)
 
 
 def main() -> None:

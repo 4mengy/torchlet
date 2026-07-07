@@ -379,6 +379,7 @@ select {
   max-height: 72vh;
   overflow: auto;
   background: var(--code-bg);
+  color: var(--code-ink);
 }
 
 .diff-table {
@@ -389,6 +390,7 @@ select {
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.82rem;
   line-height: 1.45;
+  color: var(--code-ink);
 }
 
 .diff-table td {
@@ -419,16 +421,19 @@ select {
 .diff-code {
   width: calc((100% - 160px) / 2);
   min-width: 360px;
+  color: var(--code-ink);
 }
 
 .diff-row.diff-delete .old,
 .diff-row.diff-change .old {
   background: #3a2024;
+  color: #ffd7d5;
 }
 
 .diff-row.diff-add .new,
 .diff-row.diff-change .new {
   background: #1f3325;
+  color: #d8ffd8;
 }
 
 .diff-row.diff-delete .diff-marker.old {

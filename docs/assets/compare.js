@@ -12,6 +12,13 @@
   const diffSummary = document.querySelector("#diffSummary");
   const diffView = document.querySelector("#diffView");
 
+  if (!payload) {
+    diffSummary.textContent = "data missing";
+    diffView.innerHTML =
+      '<div class="empty-code">Code data did not load. Refresh the page or check data/code.js.</div>';
+    return;
+  }
+
   function hasVersion(id) {
     return payload.versions.some((version) => version.id === id);
   }
@@ -230,21 +237,26 @@
   }
 
   function render() {
-    const left = leftVersion.value;
-    const right = rightVersion.value;
-    const path = filePath.value;
+    try {
+      const left = leftVersion.value;
+      const right = rightVersion.value;
+      const path = filePath.value;
 
-    leftTitle.textContent = left;
-    rightTitle.textContent = right;
-    const leftCode = payload.code[left] && payload.code[left][path];
-    const rightCode = payload.code[right] && payload.code[right][path];
-    leftMeta.textContent = leftCode === undefined ? `${path} missing` : path;
-    rightMeta.textContent = rightCode === undefined ? `${path} missing` : path;
+      leftTitle.textContent = left;
+      rightTitle.textContent = right;
+      const leftCode = payload.code[left] && payload.code[left][path];
+      const rightCode = payload.code[right] && payload.code[right][path];
+      leftMeta.textContent = leftCode === undefined ? `${path} missing` : path;
+      rightMeta.textContent = rightCode === undefined ? `${path} missing` : path;
 
-    renderDiff(leftCode, rightCode);
+      renderDiff(leftCode, rightCode);
 
-    const nextParams = new URLSearchParams({ left, right, file: path });
-    window.history.replaceState(null, "", `?${nextParams.toString()}`);
+      const nextParams = new URLSearchParams({ left, right, file: path });
+      window.history.replaceState(null, "", `?${nextParams.toString()}`);
+    } catch (error) {
+      diffSummary.textContent = "render error";
+      diffView.innerHTML = `<div class="empty-code">${escapeHtml(error.message)}</div>`;
+    }
   }
 
   leftVersion.addEventListener("change", render);
