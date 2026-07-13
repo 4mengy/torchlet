@@ -143,6 +143,7 @@
         <div>
           <span class="summary-label">Evolution summary</span>
           <strong>${escapeHtml(target.title)}</strong>
+          <span class="summary-theme">${escapeHtml(target.theme)}</span>
           <p>${escapeHtml(rationale)}</p>
         </div>
         <a href="${targetLink}">Open Version notes</a>`;
@@ -213,7 +214,7 @@
       .map(([directory, files]) => {
         const items = files
           .map((file) => {
-            const current = file.path === state.currentFile.path;
+            const current = file.path === state.currentFile?.path;
             const statusCode = {
               added: "A",
               deleted: "D",
@@ -311,10 +312,13 @@
       .join("");
   }
 
-  function renderSegments(segments, side) {
+  function renderSegments(segments, side, syntax) {
     return segments
       .map((segment) => {
-        const code = syntaxHighlight(segment.text);
+        const code =
+          syntax === "string"
+            ? `<span class="syntax-string">${escapeHtml(segment.text)}</span>`
+            : syntaxHighlight(segment.text);
         return segment.changed
           ? `<mark class="word-change ${side}">${code}</mark>`
           : code;
@@ -325,7 +329,13 @@
   function lineCode(row, side) {
     const text = side === "base" ? row.baseText : row.targetText;
     const segments = side === "base" ? row.baseSegments : row.targetSegments;
-    return segments ? renderSegments(segments, side) : syntaxHighlight(text || "");
+    const syntax = side === "base" ? row.baseSyntax : row.targetSyntax;
+    if (segments) {
+      return renderSegments(segments, side, syntax);
+    }
+    return syntax === "string"
+      ? `<span class="syntax-string">${escapeHtml(text || "")}</span>`
+      : syntaxHighlight(text || "");
   }
 
   function displayRows(file) {
@@ -497,6 +507,9 @@
       target.important_file,
       filePath
     );
+    if (filePath && state.currentFile?.status === "unchanged") {
+      state.showAllFiles = true;
+    }
     state.currentHunk = hunkIndex;
     state.expandedFolds.clear();
     renderVersionControls();

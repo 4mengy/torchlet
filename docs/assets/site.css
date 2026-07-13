@@ -683,6 +683,14 @@ select {
   margin-top: 2px;
 }
 
+.summary-theme {
+  display: block;
+  margin-top: 2px;
+  color: #0550ae;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .evolution-summary p {
   margin: 2px 0 0;
   color: var(--fg-muted);
@@ -922,6 +930,7 @@ select {
 }
 
 .diff-split .diff-line-no.target {
+  left: 50%;
   border-left: 1px solid var(--border-default);
 }
 

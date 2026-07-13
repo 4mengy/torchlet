@@ -148,3 +148,53 @@ test("version pair resolution defaults safely and only exposes later targets", (
     ["v02", "v03"]
   );
 });
+
+
+test("an empty file has zero added or deleted lines", () => {
+  const added = compareCore.diffFile(undefined, "");
+  const deleted = compareCore.diffFile("", undefined);
+
+  assert.deepEqual([added.added, added.deleted, added.rows.length], [0, 0, 0]);
+  assert.deepEqual(
+    [deleted.added, deleted.deleted, deleted.rows.length],
+    [0, 0, 0]
+  );
+});
+
+
+test("a comparison with no changes has no implicit current file", () => {
+  const comparison = {
+    files: [
+      { path: "stable.py", status: "unchanged", added: 0, deleted: 0 },
+    ],
+  };
+
+  assert.equal(compareCore.chooseDefaultFile(comparison, "stable.py", null), null);
+  assert.equal(
+    compareCore.chooseDefaultFile(comparison, "stable.py", "stable.py").path,
+    "stable.py"
+  );
+});
+
+
+test("file diff marks every line in a Python triple-quoted string", () => {
+  const code = [
+    "class Example:",
+    '    \"\"\"Summary',
+    "    details continue here",
+    '    \"\"\"',
+    "    pass",
+    "",
+  ].join("\n");
+
+  const diff = compareCore.diffFile(code, code);
+
+  assert.deepEqual(
+    diff.rows.map((row) => row.baseSyntax || null),
+    [null, "string", "string", "string", null]
+  );
+  assert.deepEqual(
+    diff.rows.map((row) => row.targetSyntax || null),
+    [null, "string", "string", "string", null]
+  );
+});

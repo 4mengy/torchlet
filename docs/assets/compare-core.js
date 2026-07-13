@@ -8,26 +8,25 @@
   "use strict";
 
   function splitLines(code) {
-    if (code === undefined) {
+    if (code === undefined || code === "") {
       return [];
-    }
-    if (code === "") {
-      return [""];
     }
     return code.endsWith("\n") ? code.slice(0, -1).split("\n") : code.split("\n");
   }
 
-  function buildOperations(baseLines, targetLines) {
-    const baseLength = baseLines.length;
-    const targetLength = targetLines.length;
-    const commonLengths = Array.from({ length: baseLength + 1 }, () =>
-      Array(targetLength + 1).fill(0)
+  function alignSequences(baseItems, targetItems) {
+    const commonLengths = Array.from({ length: baseItems.length + 1 }, () =>
+      Array(targetItems.length + 1).fill(0)
     );
 
-    for (let baseIndex = baseLength - 1; baseIndex >= 0; baseIndex -= 1) {
-      for (let targetIndex = targetLength - 1; targetIndex >= 0; targetIndex -= 1) {
+    for (let baseIndex = baseItems.length - 1; baseIndex >= 0; baseIndex -= 1) {
+      for (
+        let targetIndex = targetItems.length - 1;
+        targetIndex >= 0;
+        targetIndex -= 1
+      ) {
         commonLengths[baseIndex][targetIndex] =
-          baseLines[baseIndex] === targetLines[targetIndex]
+          baseItems[baseIndex] === targetItems[targetIndex]
             ? commonLengths[baseIndex + 1][targetIndex + 1] + 1
             : Math.max(
                 commonLengths[baseIndex + 1][targetIndex],
@@ -39,14 +38,14 @@
     const operations = [];
     let baseIndex = 0;
     let targetIndex = 0;
-    while (baseIndex < baseLength && targetIndex < targetLength) {
-      if (baseLines[baseIndex] === targetLines[targetIndex]) {
+    while (baseIndex < baseItems.length && targetIndex < targetItems.length) {
+      if (baseItems[baseIndex] === targetItems[targetIndex]) {
         operations.push({
           kind: "equal",
-          baseNo: baseIndex + 1,
-          targetNo: targetIndex + 1,
-          baseText: baseLines[baseIndex],
-          targetText: targetLines[targetIndex],
+          baseIndex,
+          targetIndex,
+          baseItem: baseItems[baseIndex],
+          targetItem: targetItems[targetIndex],
         });
         baseIndex += 1;
         targetIndex += 1;
@@ -56,37 +55,55 @@
       ) {
         operations.push({
           kind: "delete",
-          baseNo: baseIndex + 1,
-          baseText: baseLines[baseIndex],
+          baseIndex,
+          baseItem: baseItems[baseIndex],
         });
         baseIndex += 1;
       } else {
         operations.push({
           kind: "add",
-          targetNo: targetIndex + 1,
-          targetText: targetLines[targetIndex],
+          targetIndex,
+          targetItem: targetItems[targetIndex],
         });
         targetIndex += 1;
       }
     }
 
-    while (baseIndex < baseLength) {
+    while (baseIndex < baseItems.length) {
       operations.push({
         kind: "delete",
-        baseNo: baseIndex + 1,
-        baseText: baseLines[baseIndex],
+        baseIndex,
+        baseItem: baseItems[baseIndex],
       });
       baseIndex += 1;
     }
-    while (targetIndex < targetLength) {
+    while (targetIndex < targetItems.length) {
       operations.push({
         kind: "add",
-        targetNo: targetIndex + 1,
-        targetText: targetLines[targetIndex],
+        targetIndex,
+        targetItem: targetItems[targetIndex],
       });
       targetIndex += 1;
     }
     return operations;
+  }
+
+  function buildOperations(baseLines, targetLines) {
+    return alignSequences(baseLines, targetLines).map((operation) => ({
+      kind: operation.kind,
+      ...(operation.baseIndex === undefined
+        ? {}
+        : {
+            baseNo: operation.baseIndex + 1,
+            baseText: operation.baseItem,
+          }),
+      ...(operation.targetIndex === undefined
+        ? {}
+        : {
+            targetNo: operation.targetIndex + 1,
+            targetText: operation.targetItem,
+          }),
+    }));
   }
 
   function buildRows(baseCode, targetCode) {
@@ -157,55 +174,17 @@
   function diffSegments(baseText, targetText) {
     const baseTokens = splitTokens(baseText);
     const targetTokens = splitTokens(targetText);
-    const commonLengths = Array.from({ length: baseTokens.length + 1 }, () =>
-      Array(targetTokens.length + 1).fill(0)
-    );
-
-    for (let baseIndex = baseTokens.length - 1; baseIndex >= 0; baseIndex -= 1) {
-      for (
-        let targetIndex = targetTokens.length - 1;
-        targetIndex >= 0;
-        targetIndex -= 1
-      ) {
-        commonLengths[baseIndex][targetIndex] =
-          baseTokens[baseIndex] === targetTokens[targetIndex]
-            ? commonLengths[baseIndex + 1][targetIndex + 1] + 1
-            : Math.max(
-                commonLengths[baseIndex + 1][targetIndex],
-                commonLengths[baseIndex][targetIndex + 1]
-              );
-      }
-    }
-
     const baseSegments = [];
     const targetSegments = [];
-    let baseIndex = 0;
-    let targetIndex = 0;
-    while (baseIndex < baseTokens.length && targetIndex < targetTokens.length) {
-      if (baseTokens[baseIndex] === targetTokens[targetIndex]) {
-        const text = baseTokens[baseIndex];
-        baseSegments.push({ text, changed: false });
-        targetSegments.push({ text, changed: false });
-        baseIndex += 1;
-        targetIndex += 1;
-      } else if (
-        commonLengths[baseIndex + 1][targetIndex] >=
-        commonLengths[baseIndex][targetIndex + 1]
-      ) {
-        baseSegments.push({ text: baseTokens[baseIndex], changed: true });
-        baseIndex += 1;
+    for (const operation of alignSequences(baseTokens, targetTokens)) {
+      if (operation.kind === "equal") {
+        baseSegments.push({ text: operation.baseItem, changed: false });
+        targetSegments.push({ text: operation.targetItem, changed: false });
+      } else if (operation.kind === "delete") {
+        baseSegments.push({ text: operation.baseItem, changed: true });
       } else {
-        targetSegments.push({ text: targetTokens[targetIndex], changed: true });
-        targetIndex += 1;
+        targetSegments.push({ text: operation.targetItem, changed: true });
       }
-    }
-    while (baseIndex < baseTokens.length) {
-      baseSegments.push({ text: baseTokens[baseIndex], changed: true });
-      baseIndex += 1;
-    }
-    while (targetIndex < targetTokens.length) {
-      targetSegments.push({ text: targetTokens[targetIndex], changed: true });
-      targetIndex += 1;
     }
     return {
       baseSegments: mergeSegments(baseSegments),
@@ -273,6 +252,47 @@
     return displayRows;
   }
 
+  function annotatePythonStrings(rows, side) {
+    const textKey = `${side}Text`;
+    const syntaxKey = `${side}Syntax`;
+    let openDelimiter = null;
+
+    for (const row of rows) {
+      const text = row[textKey];
+      if (text === undefined) {
+        continue;
+      }
+      if (openDelimiter) {
+        row[syntaxKey] = "string";
+        if (text.includes(openDelimiter)) {
+          openDelimiter = null;
+        }
+        continue;
+      }
+
+      const doubleQuoteIndex = text.indexOf('\"\"\"');
+      const singleQuoteIndex = text.indexOf("'''");
+      const candidates = [
+        { delimiter: '\"\"\"', index: doubleQuoteIndex },
+        { delimiter: "'''", index: singleQuoteIndex },
+      ].filter((candidate) => candidate.index !== -1);
+      candidates.sort((left, right) => left.index - right.index);
+      const opening = candidates[0];
+      if (!opening) {
+        continue;
+      }
+
+      row[syntaxKey] = "string";
+      const closingIndex = text.indexOf(
+        opening.delimiter,
+        opening.index + opening.delimiter.length
+      );
+      if (closingIndex === -1) {
+        openDelimiter = opening.delimiter;
+      }
+    }
+  }
+
   function diffFile(baseCode, targetCode, options = {}) {
     const contextLines = options.contextLines ?? 3;
     const diff = buildRows(baseCode, targetCode);
@@ -281,6 +301,8 @@
         Object.assign(row, diffSegments(row.baseText, row.targetText));
       }
     }
+    annotatePythonStrings(diff.rows, "base");
+    annotatePythonStrings(diff.rows, "target");
     const hunks = addHunks(diff.rows);
     return {
       ...diff,
@@ -349,7 +371,7 @@
           right.added + right.deleted - (left.added + left.deleted) ||
           left.path.localeCompare(right.path)
       );
-    return changedFiles[0] || comparison.files[0] || null;
+    return changedFiles[0] || null;
   }
 
   function laterVersions(payload, baseId) {
