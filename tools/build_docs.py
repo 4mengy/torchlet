@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -297,6 +298,21 @@ def versioned(path: str, asset_version: str) -> str:
     return f"{path}?v={asset_version}" if asset_version else path
 
 
+def render_google_tag(measurement_id: str | None) -> str:
+    if not measurement_id:
+        return ""
+    if not re.fullmatch(r"G-[A-Z0-9]+", measurement_id):
+        raise ValueError("GA Measurement ID must match G-[A-Z0-9]+")
+    return f"""<!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={measurement_id}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){{dataLayer.push(arguments);}}
+    gtag("js", new Date());
+    gtag("config", "{measurement_id}");
+  </script>"""
+
+
 def compare_href(prefix: str, base: str, target: str, file_path: str) -> str:
     return (
         f"{prefix}/compare/?base={quote(base)}&target={quote(target)}"
@@ -468,6 +484,7 @@ def page_shell(
   <link rel="alternate" hreflang="{text["switch_lang"]}" href="{language_href}">
   <link rel="stylesheet"
         href="{versioned(f"{root_prefix}/assets/site.css", asset_version)}">
+  {text.get("analytics_head", "")}
   {extra_head}
 </head>
 <body class="{page_class}">
@@ -718,17 +735,22 @@ def build_compare(
     )
 
 
-def build(out_dir: Path) -> None:
+def build(out_dir: Path, ga_measurement_id: str | None = None) -> None:
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
 
-    build_locale(out_dir, "en")
-    build_locale(out_dir / "zh", "zh")
+    build_locale(out_dir, "en", ga_measurement_id)
+    build_locale(out_dir / "zh", "zh", ga_measurement_id)
 
 
-def build_locale(out_dir: Path, locale: str) -> None:
-    text = LOCALES[locale]
+def build_locale(
+    out_dir: Path, locale: str, ga_measurement_id: str | None = None
+) -> None:
+    text = {
+        **LOCALES[locale],
+        "analytics_head": render_google_tag(ga_measurement_id),
+    }
     versions = read_versions(locale)
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ASSETS, out_dir / "assets")
@@ -773,8 +795,13 @@ def main() -> None:
         default=DOCS / "_site",
         help="Output directory for the generated static site.",
     )
+    parser.add_argument(
+        "--ga-measurement-id",
+        default=os.environ.get("GA_MEASUREMENT_ID"),
+        help="Optional GA4 Measurement ID, for example G-XXXXXXXXXX.",
+    )
     args = parser.parse_args()
-    build(args.out)
+    build(args.out, args.ga_measurement_id)
 
 
 if __name__ == "__main__":

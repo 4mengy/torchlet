@@ -142,6 +142,35 @@ class DocsBuildTest(unittest.TestCase):
         self.assertIn("[简体中文](README.zh-CN.md)", english_readme)
         self.assertIn("[English](README.md)", chinese_readme)
 
+    def test_google_analytics_is_optional_and_applies_to_both_locales(self):
+        build_docs = load_build_docs_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            untracked_dir = temp_root / "untracked"
+            tracked_dir = temp_root / "tracked"
+            build_docs.build(untracked_dir)
+            build_docs.build(tracked_dir, "G-TEST123456")
+
+            untracked_pages = [
+                path.read_text() for path in untracked_dir.rglob("*.html")
+            ]
+            tracked_pages = [path.read_text() for path in tracked_dir.rglob("*.html")]
+
+        self.assertTrue(untracked_pages)
+        self.assertTrue(tracked_pages)
+        self.assertTrue(
+            all("googletagmanager.com/gtag/js" not in page for page in untracked_pages)
+        )
+        for page in tracked_pages:
+            self.assertIn(
+                "https://www.googletagmanager.com/gtag/js?id=G-TEST123456", page
+            )
+            self.assertIn('gtag("config", "G-TEST123456")', page)
+
+        with self.assertRaisesRegex(ValueError, "GA Measurement ID"):
+            build_docs.render_google_tag("not-a-measurement-id")
+
     def test_split_diff_keeps_gutters_fixed_while_code_scrolls(self):
         build_docs = load_build_docs_module()
 
