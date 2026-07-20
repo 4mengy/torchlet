@@ -29,7 +29,7 @@ def get_logger(
     return logger
 
 
-logger = get_logger()
+logger = get_logger(level=logging.WARNING)
 
 
 __all__ = ["get_logger", "logger"]

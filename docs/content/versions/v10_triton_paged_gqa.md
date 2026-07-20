@@ -12,13 +12,26 @@ The PyTorch version makes the memory mapping clear, but Python loops and generic
 
 ## Core Principle
 
-The kernel should use the block table to translate logical token positions into physical KV blocks. For each decode query, it loads the relevant K/V tiles, applies the valid-token mask, computes attention scores, and writes the context vector.
+The kernel uses the block table to translate logical token positions into physical KV blocks. For each decode query, it loads the relevant K/V tiles incrementally, applies the valid-token mask, and uses online softmax to maintain the running maximum, exponential sum, and Value-weighted accumulator. This produces the same context vector as full softmax without materializing the complete attention-score matrix.
 
 The important mental model is:
 
 ```text
 request slot + logical block -> physical block -> K/V tile
+                                                 -> update m / l / acc
 ```
+
+Each KV tile applies the following recurrence, where `m`, `l`, and `acc` are the running maximum score, exponential sum, and unnormalized output:
+
+```text
+m_new = max(m, max(scores_tile))
+alpha = exp(m - m_new)
+p     = exp(scores_tile - m_new)
+l     = alpha * l + sum(p)
+acc   = alpha * acc + p @ V_tile
+```
+
+After all valid KV tokens have been visited, the final output is `acc / l`.
 
 The graph captures a fixed Triton decode launch shape and fixed tensor addresses. Runtime changes should happen by mutating existing tensors:
 
