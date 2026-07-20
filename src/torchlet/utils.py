@@ -2,6 +2,42 @@ import torch
 from torch import Tensor
 
 
+def load_model_weights(
+    model: torch.nn.Module,
+    weights: dict[str, Tensor],
+    strict: bool = False,
+):
+    """Load checkpoint weights without silently casting them to FP32.
+
+    PyTorch copies state-dict tensors into the module's existing parameter
+    dtype. Qwen modules are constructed in FP32 by default, so a normal
+    ``load_state_dict`` would upcast a BF16 checkpoint. Match each parameter to
+    its checkpoint dtype first, while leaving FP32 buffers such as RoPE
+    frequencies unchanged.
+    """
+    parameter_dtypes: dict[int, torch.dtype] = {}
+    for name, parameter in model.named_parameters(remove_duplicate=False):
+        source = weights.get(name)
+        if source is None or not source.is_floating_point():
+            continue
+        parameter_id = id(parameter)
+        previous_dtype = parameter_dtypes.get(parameter_id)
+        if previous_dtype is not None and previous_dtype != source.dtype:
+            raise ValueError(
+                f"tied parameter {name} has conflicting checkpoint dtypes: "
+                f"{previous_dtype} and {source.dtype}"
+            )
+        parameter_dtypes[parameter_id] = source.dtype
+
+    with torch.no_grad():
+        for parameter in model.parameters():
+            checkpoint_dtype = parameter_dtypes.get(id(parameter))
+            if checkpoint_dtype is not None and parameter.dtype != checkpoint_dtype:
+                parameter.data = parameter.data.to(dtype=checkpoint_dtype)
+
+    return model.load_state_dict(weights, strict=strict)
+
+
 def get_weights_info(weights: dict[str, Tensor]) -> str:
     rows = [(key, str(value.shape), str(value.dtype)) for key, value in weights.items()]
 

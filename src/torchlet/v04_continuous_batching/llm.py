@@ -10,7 +10,7 @@ from modelscope import snapshot_download
 from transformers import AutoTokenizer
 
 from torchlet.logger import logger
-from torchlet.utils import get_weights_info, get_backend_info
+from torchlet.utils import get_backend_info, get_weights_info, load_model_weights
 
 from .model.qwen2_5 import Qwen2ForCausalLM
 from .request import Request
@@ -36,7 +36,7 @@ class LLM:
         self.stop_ids = {tok_id for tok_id in self.stop_ids if tok_id is not None}
 
         self.model = Qwen2ForCausalLM(self.config)
-        load_result = self.model.load_state_dict(weights, strict=False)
+        load_result = load_model_weights(self.model, weights)
         logger.info("missing_keys: %s", load_result.missing_keys)
         logger.info("unexpected_keys: %s", load_result.unexpected_keys)
         del weights

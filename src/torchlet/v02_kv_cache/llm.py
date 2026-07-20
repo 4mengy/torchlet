@@ -9,7 +9,7 @@ from modelscope import snapshot_download
 from transformers import AutoTokenizer
 
 from torchlet.logger import logger
-from torchlet.utils import get_weights_info, get_backend_info
+from torchlet.utils import get_backend_info, get_weights_info, load_model_weights
 
 from .forward_params import ForwardParams
 from .model.qwen2_5 import Qwen2ForCausalLM
@@ -30,7 +30,7 @@ class LLM:
         self.config = json.loads((model_dir / "config.json").read_text())
         self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
         self.model = Qwen2ForCausalLM(self.config)
-        load_result = self.model.load_state_dict(weights, strict=False)
+        load_result = load_model_weights(self.model, weights)
         del weights
         self.model.to(self.device)
         self.model.eval()
