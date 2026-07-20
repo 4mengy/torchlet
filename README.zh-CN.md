@@ -28,8 +28,9 @@ Torchlet 是一个小型 LLM 推理参考项目。它不以生产级推理框架
 - `v07_cuda_graph`：捕获并重放静态解码路径。
 - `v08_paged_gqa_py`：分页 KV 缓存和可读的 PyTorch 分页 GQA。
 - `v09_triton_basics`：用于 RoPE、RMSNorm 和 SwiGLU FFN 的小型 Triton kernel。
+- `v10_triton_paged_gqa`：Triton 分页 GQA 和 CUDA Graph 解码重放。
 
-完整的计划版本路线请参阅 [ROADMAP.md](ROADMAP.md)。
+完整版本路线请参阅 [ROADMAP.md](ROADMAP.md)。
 
 ## 文档站点
 
@@ -64,7 +65,7 @@ python -m pip install -e ".[dev]"
 ## 示例
 
 ```python
-from torchlet.v03_request_states.llm import LLM
+from torchlet.v10_triton_paged_gqa.llm import LLM
 
 llm = LLM("Qwen/Qwen2.5-0.5B-Instruct")
 outputs = llm.generate([
@@ -78,9 +79,9 @@ print(outputs)
 也可以直接运行模块示例：
 
 ```bash
-python -m torchlet.v03_request_states.llm
+python -m torchlet.v10_triton_paged_gqa.llm
 ```
 
 ## 状态
 
-Torchlet 仍处于早期参考实现阶段。当前已实现路径到达 Triton 基础；下一个计划版本会把分页 GQA 迁移到 Triton，并与 CUDA Graph 重放结合。
+Torchlet 仍处于早期参考实现阶段。当前已实现路径到达 Triton 分页 GQA 和 CUDA Graph 解码重放。

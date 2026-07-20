@@ -28,8 +28,9 @@ The current implementation uses a Qwen2.5-style decoder-only Transformer as the 
 - `v07_cuda_graph`: capture and replay of the static decode path.
 - `v08_paged_gqa_py`: paged KV cache and readable PyTorch paged GQA.
 - `v09_triton_basics`: small Triton kernels for RoPE, RMSNorm, and SwiGLU FFN.
+- `v10_triton_paged_gqa`: Triton paged GQA with CUDA Graph decode replay.
 
-See [ROADMAP.md](ROADMAP.md) for the full planned version path.
+See [ROADMAP.md](ROADMAP.md) for the full version path.
 
 ## Documentation Site
 
@@ -69,7 +70,7 @@ python -m pip install -e ".[dev]"
 ## Example
 
 ```python
-from torchlet.v03_request_states.llm import LLM
+from torchlet.v10_triton_paged_gqa.llm import LLM
 
 llm = LLM("Qwen/Qwen2.5-0.5B-Instruct")
 outputs = llm.generate([
@@ -83,9 +84,9 @@ print(outputs)
 You can also run the module example:
 
 ```bash
-python -m torchlet.v03_request_states.llm
+python -m torchlet.v10_triton_paged_gqa.llm
 ```
 
 ## Status
 
-Torchlet is still an early reference implementation. The implemented path currently reaches Triton basics; the next planned Version moves paged GQA to Triton and combines it with CUDA Graph replay.
+Torchlet is still an early reference implementation. The implemented path currently reaches Triton paged GQA with CUDA Graph decode replay.

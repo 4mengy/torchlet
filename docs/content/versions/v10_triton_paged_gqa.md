@@ -2,9 +2,9 @@
 
 ## What This Version Introduces
 
-This planned version moves paged GQA attention from readable PyTorch into Triton and captures the fixed decode path with CUDA Graph.
+This version moves paged GQA attention from readable PyTorch into Triton and captures the fixed decode path with CUDA Graph.
 
-The block table and paged KV cache idea should remain the same, but the hot attention loop moves into a custom kernel whose decode launch can be replayed.
+The block table and paged KV cache layout remain the same, while the hot attention loop moves into a custom kernel whose decode launch can be replayed.
 
 ## Why Introduce It
 

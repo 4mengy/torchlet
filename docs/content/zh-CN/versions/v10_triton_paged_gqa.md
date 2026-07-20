@@ -2,7 +2,7 @@
 
 ## 本版本引入什么
 
-这个计划版本把分页 GQA 注意力从易读的 PyTorch 迁移到 Triton，并使用 CUDA Graph 捕获固定解码路径。
+本版本把分页 GQA 注意力从易读的 PyTorch 迁移到 Triton，并使用 CUDA Graph 捕获固定解码路径。
 
 块表和分页 KV 缓存的思路保持不变，但热点注意力循环进入自定义 kernel，其解码启动可以被重放。
 

@@ -69,6 +69,6 @@
     "id": "v10_triton_paged_gqa",
     "title": "Triton Paged GQA + CUDA Graph",
     "theme": "Move paged attention to Triton and replay the fixed decode path",
-    "status": "planned"
+    "status": "implemented"
   }
 ]
